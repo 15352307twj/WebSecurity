@@ -444,9 +444,12 @@ int main() {
 ```
 --- 
 
-## 五、编译运行结果
-首先需要准备一个用于加密的文本文件，我创建了一个I_have_a_dream.txt的记事本文件，内容是Martin Luther King在1963年发表的I have a dream演讲原文，长度适中。然后就可以编译运行程序了，运行结果如下：
-![Result][4]
+## 五、编译运行结果  
+
+首先需要准备一个用于加密的文本文件，我创建了一个I_have_a_dream.txt的记事本文件，内容是Martin Luther King在1963年发表的I have a dream演讲原文，长度适中。然后就可以编译运行程序了，运行结果如下：  
+
+![Result][4]  
+
 ---
 参考链接：https://www.jianshu.com/p/c44a8a1b7c38
 
