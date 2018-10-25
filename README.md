@@ -446,8 +446,7 @@ int main() {
 
 ## 五、编译运行结果
 首先需要准备一个用于加密的文本文件，我创建了一个I_have_a_dream.txt的记事本文件，内容是Martin Luther King在1963年发表的I have a dream演讲原文，长度适中。然后就可以编译运行程序了，运行结果如下：
-
-
+![Result][4]
 ---
 参考链接：https://www.jianshu.com/p/c44a8a1b7c38
 
@@ -455,3 +454,4 @@ int main() {
   [1]: https://www.researchgate.net/profile/Muhammad_Mushtaq31/publication/321587376/figure/fig4/AS:568581112987648@1512571709096/Data-Encryption-Standard-DES-Algorithm.png
   [2]: https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/DES-key-schedule.png/250px-DES-key-schedule.png
   [3]: https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Data_Encription_Standard_Flow_Diagram.svg/300px-Data_Encription_Standard_Flow_Diagram.svg.png
+  [4]: https://github.com/sysuxwh/WebSecurity-DES/blob/master/img/result.png
