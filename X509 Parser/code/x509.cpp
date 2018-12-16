@@ -1,5 +1,4 @@
 #include <iostream>
-#include <string>
 #include "certificate.hpp"
 
 using namespace std;
@@ -17,9 +16,7 @@ int main() {
     }
 
     getTLV();
-
     fclose(file);
-
     return 0;
 }   
 

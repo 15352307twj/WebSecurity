@@ -95,7 +95,7 @@ TBSCertificate ::= SEQUENCE {
 1. version - 版本号  
    第一个字段的数据类型是Context[0]，其下包含一个INTEGER类型的数据，就是该证书的版本号。证书格式的版本共有v1, v2, v3三种，分别由整数0、1、2表示。
 2. serialNumber - 序列号  
-   整数序列号为INTEGER类型，整数序列号用来在某一个CA范围内唯一地标识一张证书。由此，“颁发者”和“序列号”配合起来可以唯一标识一张数字证书。将该整数的值用16进制数表示即是序列号。
+   整数序列号为INTEGER类型，整数序列号用来在某一个CA范围内唯一地标识一张证书。由此，“颁发者”和“序列号”配合起来可以唯一标识一张数字证书。将Value的值用16进制数表示即是序列号。
 3. signature - 签名算法
    签名算法给出了CA签发证书时所使用的数字签名算法，数据类型为AlgorithmIdentifier，和signatureAlgorithm保持数据类型和值一致。
    ```
@@ -104,7 +104,7 @@ TBSCertificate ::= SEQUENCE {
         parameters       ANY DEFINED BY algorithm OPTIONAL  
     }
    ```
-   比较有意思的是需要对VALUE的16进制数串转换为OID，再根据OID判断签名算法。[16进制数串转换为OID方法](https://crypto.stackexchange.com/questions/29115/how-is-oid-2a-86-48-86-f7-0d-parsed-as-1-2-840-113549)
+   比较有意思的是需要将VALUE的串转换为OID，具体转换方法参考[16进制数串转换为OID方法](https://crypto.stackexchange.com/questions/29115/how-is-oid-2a-86-48-86-f7-0d-parsed-as-1-2-840-113549)。每一个OID都对应着一种算法，如1.2.840.113549.1.1.1表示RSA算法，因此再根据OID判断签名算法即可。。
 4. issuer - 颁发者  
    证书的颁发者标识了签发证书的CA实体，数据类型为Name。
    ```
@@ -129,9 +129,10 @@ TBSCertificate ::= SEQUENCE {
    |Organization Name|机构名|O|
    |Organizationl Unit Name|机构单元名称|OU|
    |Common Name|通用名称|CN|
+   读取的时候，先将AttributeType的值转换为OID，再根据OID判断DN项的属性类型名称；然后将AttributeValue的值按照ASCII码转换成对应英文字符即可。
 
 5. validity - 有效期  
-   证书有效期(validity)给出证书的有效使用期，包含起、止两个时间值。时间值的数据类型为utcTime，代表格林威治標準時間(GMT)。
+   证书有效期(validity)给出证书的有效使用期，包含起、止两个时间值。时间值的数据类型为utcTime，代表格林威治標準時間(GMT)。utcTime的Value转成ASCII码后表示形式为YYMMDDhhmmZ，依次是年月日时分秒，Z表示GMT时间。
 6. subject - 持有者(主体)  
    证书主体(subject)标识了证书持有者的实体,持有者的数据类型和颁发者一样，同样是DN项的集合。
 7. subjectPublicKeyInfo - 主体公钥信息  
@@ -142,14 +143,13 @@ TBSCertificate ::= SEQUENCE {
         subjectPublicKey    BIT STRING
     }
    ```
+   读取的时候，algorithm同样是AlgorithmIdentifier类型，参照上面的读取方式；BIT STRING类型的subjectPublicKey读取为16进制数形式。
 8. issuerUniqueID & subjectUniqueID - 颁发者唯一标识符 & 主体唯一标识符(可选)  
    颁发者唯一标识符和主体唯一标识符均是BIT STRING类型的数据，用作颁发者/主体的唯一标识。这两个字段都仅在版本2和版本3的证书有要求，属于可选项。
 9.  extensions - X.509证书扩展部分  
     可选的标准和专用的扩展（仅在版本2和版本3中使用），扩展部分的元素通常可包括颁发者密钥标识符、私钥的使用期、证书策略等等
 
-## 四、**X.509数字证书的数据类型处理**  
-
-## 五、**使用C++程序进行证书解析**  
+## 四、**使用C++程序进行证书解析**  
   分别从 https://www.google.com 和 https://www.baidu.com 获取DER编码二进制X.509证书，使用程序进行解析。解析结果如下：  
   ![google_dump](img/dump_google.png)  
   ![baidu_dump](img/dump_baidu.png)
