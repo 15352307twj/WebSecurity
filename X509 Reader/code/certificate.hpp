@@ -3,66 +3,75 @@
 #include <string.h>
 using namespace std;
 
-FILE *file;
-int printCount = 0;  // 表示输出的次数
+FILE *file;             // 操作的cer文件
+int printCount = 0;     // 输出的次数
 
-pair<int, int> getTLV();
-char* getHex(unsigned char c);
-int getLength(unsigned char c);
-char* getData(int length);
-char* getAlgorithm(int length);
-char* getWord(int length);
-void printInfo(int time, char* data);
-bool printDN(char *data); 
-void printAlgorithm(char *data);
+// -------------------------------------分割线：函数声明------------------------------
 
-// 获取该数据块的 Type类型 Length长度 
-pair<int, int> getTLV() {
-    unsigned char type = fgetc(file);
-    unsigned char len0 = fgetc(file);
-    int len = getLength(len0); 
+// 读取数据块TLV的递归函数
+int getTLV();
+
+// 对Length的值进行解析的函数
+int getLength(unsigned char c); 
+
+// 对Value的值进行解析的函数
+char* getHex(unsigned char c);          // 将一个字节转换为16进制数表示
+char* getData(int length);              // 将Value转换为16进制数
+char* getAlgorithm(int length);         // 将Value转换为签名算法的OID
+char* getWord(int length);              // 将Value转换为词语
+
+// 输出函数
+void printInfo(int time, char* data);   // 输出证书信息，传入参数：输出次数；输出数据
+bool printDN(char *data);               // 将OID转换为DN项输出
+void printAlgorithm(char *data);        // 将OID转换为算法名字输出
+
+
+
+// -------------------------------------分割线：函数实现------------------------------
+
+// 获取该数据块的 Type类型 Length长度 Value值
+int getTLV() {
+    unsigned char type = fgetc(file);   // 获取Type
+    unsigned char len0 = fgetc(file);   // 获取Length的第一个字节
+    int len = getLength(len0);          // 获取真实的Length
 
     bool isPrint = true;    // 信息是否输出
-    char *buffer;      // 存储输出结果
-
-    // char *temp;
-    // temp = getHex(type);
-    // std::cout << "Hex: " << temp << "   ";
+    char *buffer;           // 存储输出结果
 
     switch (type) {
-        case 0x01:      // BOOLEAN
+        case 0x01:                              // BOOLEAN
             break;
-        case 0x02: {// INTEGER             
+        case 0x02: {                            // INTEGER             
             buffer = getData(len);
             break;
         }
-        case 0x03: { // BIT STRING
+        case 0x03: {                            // BIT STRING
             buffer = getData(len);
             break;
         }
-        case 0x04:      // OCTET STRING
+        case 0x04:                              // OCTET STRING
             break;
-        case 0x05:      // NULL
+        case 0x05:                              // NULL
             strcpy(buffer, "NULL");
             break;
-        case 0x06: {    // OBJECT IDENTIFIER
+        case 0x06: {                            // OBJECT IDENTIFIER
             buffer = getAlgorithm(len);
             break;
         }
-        case 0x13: case 0x0C:      // PrintableString or UTF8String
+        case 0x13: case 0x0C:                   // PrintableString or UTF8String
             buffer = getWord(len);
             break;
-        case 0x17: // UTCtime
+        case 0x17:                              // UTCtime
             buffer = getWord(len);
             break;
         case 0x30: case 0x31: case 0xA0: {      // SEQUENCE or SET or Context
             isPrint = false;              
             int remain = len;
             while (remain > 0) 
-                remain -= getTLV().first;
+                remain -= getTLV();
             break;
         }
-        case 0xA3: {    // Context[3] 扩展部分            
+        case 0xA3: {                            // Context[3] 扩展部分            
             int remain = len;
             while (remain > 0) {
                 fgetc(file);
@@ -76,143 +85,10 @@ pair<int, int> getTLV() {
 
     if (isPrint) 
         printInfo(++printCount, buffer);
-    return make_pair(len, 0);
+    return len;
 }
 
-// 将1个字节转换为2个16进制数表示
-char* getHex(unsigned char c) {
-    char *temp = new char[2];
-    sprintf(temp, "%02X", c);
-    return temp;
-}
-
-// 输出信息
-bool printStatus = false; // 还未开始
-void printInfo(int time, char *data) {
-    switch (time) {
-        case 1: {
-            // 输出版本号
-            cout << endl << endl <<  "# 待签名证书 tbsCertificate :" << endl;
-            cout << left << setw(30) <<  "【版本】:" << "V" << char(data[1]+1) << endl;
-            break;
-        }
-        case 2: {
-            // 输出序列号
-            cout << left << setw(30) <<  "【序列号】:" << data << endl;
-            break;
-        }
-        case 3: {
-            // 输出签名算法
-            cout << left << setw(30) <<  "【签名算法】:";
-            printAlgorithm(data);
-            break;
-        }
-        case 4: {
-            // 输出签名算法参数
-            cout << left << setw(30) <<  "【签名算法所需参数】:" << data << endl;
-            break;
-        }
-        case 5: {
-            // 输出颁发者信息 - 信息类型
-            if (printStatus == false) {// 第一次调用
-                cout << left << setw(30) <<  "【颁发者】:";
-                printStatus = true;
-            }
-            
-            if (printDN(data))
-                break;
-            else {
-                printCount += 2;
-                time += 2;          // 说明这里并不是输出颁发者信息，而是输出有效期
-                cout << endl;
-                printStatus = false;    // 结束颁发者输出
-            }                
-        }
-        case 6: {
-            // 输出颁发者信息 - 信息数据
-            if (printStatus) {
-                cout << data << "  ";
-                printCount -= 2; // 继续输出颁发者信息
-                break;
-            }
-        }
-        case 7: {
-            // 输出有效期 - 起始
-            cout << left << setw(30) <<  "【有效期】:" 
-                << data[0] << data[1] << "年" << data[2] << data[3] << "月" << data[4] << data[5] << "日"
-                << data[6] << data[7] << ":"  << data[8] << data[9] << ":"  << data[10] << data[11];
-            break;
-        }
-        case 8: {
-            // 输出有效期 - 终止
-            cout << " 至 " 
-                << data[0] << data[1] << "年" << data[2] << data[3] << "月" << data[4] << data[5] << "日"
-                << data[6] << data[7] << ":"  << data[8] << data[9] << ":"  << data[10] << data[11]
-                << "  (GMT)" << endl;
-            break;
-        }
-        case 9: {
-            // 输出持有者信息 - 信息类型
-            if (printStatus == false) {// 第一次调用
-                cout << left << setw(30) <<  "【持有者】:";
-                printStatus = true;
-            }
-            
-            if (printDN(data))
-                break;
-            else {
-                printCount += 2;
-                time += 2;              // 说明这里并不是输出持有者信息，而是输出公钥
-                cout << endl;
-                printStatus = false;    // 结束持有者输出
-            }   
-        }
-        case 10 : {
-            // 输出颁发者信息 - 信息数据
-            if (printStatus) {
-                cout << data << "  ";
-                printCount -= 2;        // 继续输出持有者信息
-                break;
-            }
-        }
-        case 11: {
-            cout << left << setw(30) <<  "【公钥加密算法】:";
-            printAlgorithm(data);
-            break;
-        }
-        case 12: {
-            cout << left << setw(30) <<  "【公钥加密算法参数】:" << data << endl;
-            break;
-        }
-        case 13: {
-            cout << left << setw(30) <<  "【公钥】:" << data << endl;
-            break;
-        }
-        case 14: {
-            cout << left << setw(30) <<  "【扩展部分】:" << "略" << endl;
-            break;
-        }
-        case 15: {
-            // 输出签名算法
-            cout << endl << endl <<  "# 签名算法 signatureAlgorithm :" << endl;
-            cout << left << setw(30) <<  "【签名算法】:";
-            printAlgorithm(data);
-            break;
-        }
-        case 16: {
-            // 输出签名算法参数
-            cout << left << setw(30) <<  "【签名算法所需参数】:" << data << endl;
-            break;
-        }
-        case 17: {
-            // 输出签名值
-            cout << endl << endl <<  "# 签名值 signatureValue :" << endl;
-            cout << left << setw(30) <<  "【签名值】:" << data << endl;
-        }
-        default:
-            break;
-    }
-}
+// ------------------------------------------------------------------------------------
 
 // 获取数据块的真实长度
 int getLength(unsigned char len0) {
@@ -227,6 +103,14 @@ int getLength(unsigned char len0) {
         return len0;
 }
 
+
+// 将1个字节转换为2个16进制数表示
+char* getHex(unsigned char c) {
+    char *temp = new char[2];
+    sprintf(temp, "%02X", c);
+    return temp;
+}
+
 // 获取十六进制数据
 char* getData(int length) {
     char *buffer = new char[length * 2];
@@ -235,7 +119,6 @@ char* getData(int length) {
     for (int i = 0; i < length; i++) {
         byte = fgetc(file);
         strcat(buffer, getHex(byte));
-        // cout << buffer << endl;
     }
     return buffer;
 }
@@ -285,6 +168,138 @@ char* getWord(int length) {
     buffer[length] = '\0';
     return buffer;
 }
+
+//------------------------------------------------------------------------------------------
+
+// 输出证书解析信息
+bool printStatus = false; // 还未开始
+void printInfo(int time, char *data) {
+    switch (time) {
+        case 1: {
+            // 输出版本号
+            cout << endl << endl <<  "# 待签名证书 tbsCertificate :" << endl;
+            cout << left << setw(30) <<  "【版本】:" << "V" << char(data[1]+1) << endl;
+            break;
+        }
+        case 2: {
+            // 输出序列号
+            cout << left << setw(30) <<  "【序列号】:" << data << endl;
+            break;
+        }
+        case 3: {
+            // 输出签名算法
+            cout << left << setw(30) <<  "【签名算法】:";
+            printAlgorithm(data);
+            break;
+        }
+        case 4: {
+            // 输出签名算法参数
+            cout << left << setw(30) <<  "【签名算法所需参数】:" << data << endl;
+            break;
+        }
+        case 5: {
+            // 输出颁发者信息 - 信息类型
+            if (printStatus == false) {                     // 第一次调用
+                cout << left << setw(30) <<  "【颁发者】:";
+                printStatus = true;
+            }
+            
+            if (printDN(data))
+                break;
+            else {
+                printCount += 2;
+                time += 2;                                  // 说明这里并不是输出颁发者信息，而是输出有效期
+                cout << endl;
+                printStatus = false;                        // 结束颁发者输出
+            }                
+        }
+        case 6: {
+            // 输出颁发者信息 - 信息数据
+            if (printStatus) {
+                cout << data << "  ";
+                printCount -= 2;                            // 继续输出颁发者信息
+                break;
+            }
+        }
+        case 7: {
+            // 输出有效期 - 起始
+            cout << left << setw(30) <<  "【有效期】:" 
+                << data[0] << data[1] << "年" << data[2] << data[3] << "月" << data[4] << data[5] << "日"
+                << data[6] << data[7] << ":"  << data[8] << data[9] << ":"  << data[10] << data[11];
+            break;
+        }
+        case 8: {
+            // 输出有效期 - 终止
+            cout << " 至 " 
+                << data[0] << data[1] << "年" << data[2] << data[3] << "月" << data[4] << data[5] << "日"
+                << data[6] << data[7] << ":"  << data[8] << data[9] << ":"  << data[10] << data[11]
+                << "  (GMT)" << endl;
+            break;
+        }
+        case 9: {
+            // 输出持有者信息 - 信息类型
+            if (printStatus == false) {                     // 第一次调用
+                cout << left << setw(30) <<  "【持有者】:";
+                printStatus = true;
+            }
+            
+            if (printDN(data))
+                break;
+            else {
+                printCount += 2;
+                time += 2;                                  // 说明这里并不是输出持有者信息，而是输出公钥
+                cout << endl;
+                printStatus = false;                        // 结束持有者输出
+            }   
+        }
+        case 10 : {
+            // 输出颁发者信息 - 信息数据
+            if (printStatus) {
+                cout << data << "  ";
+                printCount -= 2;                            // 继续输出持有者信息
+                break;
+            }
+        }
+        case 11: {
+            cout << left << setw(30) <<  "【公钥加密算法】:";
+            printAlgorithm(data);
+            break;
+        }
+        case 12: {
+            cout << left << setw(30) <<  "【公钥加密算法参数】:" << data << endl;
+            break;
+        }
+        case 13: {
+            cout << left << setw(30) <<  "【公钥】:" << data << endl;
+            break;
+        }
+        case 14: {
+            cout << left << setw(30) <<  "【扩展部分】:" << "略" << endl;
+            break;
+        }
+        case 15: {
+            // 输出签名算法
+            cout << endl << endl <<  "# 签名算法 signatureAlgorithm :" << endl;
+            cout << left << setw(30) <<  "【签名算法】:";
+            printAlgorithm(data);
+            break;
+        }
+        case 16: {
+            // 输出签名算法参数
+            cout << left << setw(30) <<  "【签名算法所需参数】:" << data << endl;
+            break;
+        }
+        case 17: {
+            // 输出签名值
+            cout << endl << endl <<  "# 签名值 signatureValue :" << endl;
+            cout << left << setw(30) <<  "【签名值】:" << data << endl;
+        }
+        default:
+            break;
+    }
+}
+
+
 
 // 输出算法
 void printAlgorithm(char *data) {
