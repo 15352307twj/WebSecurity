@@ -96,7 +96,7 @@ TBSCertificate ::= SEQUENCE {
    第一个字段的数据类型是Context[0]，其下包含一个INTEGER类型的数据，就是该证书的版本号。证书格式的版本共有v1, v2, v3三种，分别由整数0、1、2表示。
 2. serialNumber - 序列号  
    整数序列号为INTEGER类型，整数序列号用来在某一个CA范围内唯一地标识一张证书。由此，“颁发者”和“序列号”配合起来可以唯一标识一张数字证书。将Value的值用16进制数表示即是序列号。
-3. signature - 签名算法
+3. signature - 签名算法  
    签名算法给出了CA签发证书时所使用的数字签名算法，数据类型为AlgorithmIdentifier，和signatureAlgorithm保持数据类型和值一致。
    ```
     AlgorithmIdentifier  ::=  SEQUENCE  {
